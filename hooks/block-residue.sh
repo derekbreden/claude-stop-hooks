@@ -125,15 +125,17 @@ fi
 #   - history narrative: previously, originally, used to be, switched from,
 #     changed from, moved away from, no longer
 #   - decision narrative: we chose / considered / rejected / decided, the
-#     rationale, the reason(s) is/are/why/for, the reasoning behind
+#     rationale, the reason(s) is/are/why/for, the reasoning behind, chosen /
+#     selected / picked because, intentionally [verb], deliberately [verb]
 #   - defense against alternatives: rather than (verb|article), instead of
 #     (verb|article), alternatives considered / ruled out / rejected, designs
 #     considered / ruled out / rejected, trade-off, not a compromise / substitute,
-#     because the alternative
+#     because the alternative, specifically so, would otherwise
+#   - claim of rightness: is the right / correct X
 # The pattern is intentionally lenient — false positives are cheap (one Haiku
 # call) but false negatives are silent slips. Extend when the log shows
 # something getting past.
-pattern='([Pp]reviously|[Oo]riginally|[Uu]sed[ \-]+to[ \-]+(be|use|have|do|exist)|[Ss]witched[ \-]+from|[Cc]hanged[ \-]+from|[Mm]oved[ \-]+away[ \-]+from|[Nn]o[ \-]+longer|[Ww]e[ \-]+(chose|considered|rejected|decided)|[Tt]he[ \-]+rationale|[Rr]ather[ \-]+than[ \-]+(using|having|going[ \-]+with|choosing|doing|the|a|an)|[Ii]nstead[ \-]+of[ \-]+(using|having|going[ \-]+with|choosing|the|a|an)|[Aa]lternatives?[ \-]+(considered|ruled[ \-]+out|rejected)|[Dd]esigns?[ \-]+(considered|ruled[ \-]+out|rejected)|[Tt]rade[ \-]?offs?|[Nn]ot[ \-]+a[ \-]+(compromise|substitute)|[Bb]ecause[ \-]+the[ \-]+alternative|[Tt]he[ \-]+reasoning[ \-]+behind|[Tt]he[ \-]+(reason|reasons)[ \-]+(is|are|why|for))'
+pattern='([Pp]reviously|[Oo]riginally|[Uu]sed[ \-]+to[ \-]+(be|use|have|do|exist)|[Ss]witched[ \-]+from|[Cc]hanged[ \-]+from|[Mm]oved[ \-]+away[ \-]+from|[Nn]o[ \-]+longer|[Ww]e[ \-]+(chose|considered|rejected|decided)|[Tt]he[ \-]+rationale|[Rr]ather[ \-]+than[ \-]+(using|having|going[ \-]+with|choosing|doing|the|a|an)|[Ii]nstead[ \-]+of[ \-]+(using|having|going[ \-]+with|choosing|the|a|an)|[Aa]lternatives?[ \-]+(considered|ruled[ \-]+out|rejected)|[Dd]esigns?[ \-]+(considered|ruled[ \-]+out|rejected)|[Tt]rade[ \-]?offs?|[Nn]ot[ \-]+a[ \-]+(compromise|substitute)|[Bb]ecause[ \-]+the[ \-]+alternative|[Tt]he[ \-]+reasoning[ \-]+behind|[Tt]he[ \-]+(reason|reasons)[ \-]+(is|are|why|for)|[Cc]hosen[ \-]+because|[Ss]elected[ \-]+because|[Pp]icked[ \-]+because|[Ii]ntentionally[ \-]+[[:alpha:]]+|[Dd]eliberately[ \-]+[[:alpha:]]+|[Ss]pecifically[ \-]+so[ \-]+[[:alpha:]]|[Ii]s[ \-]+the[ \-]+(right|correct)[ \-]+[[:alpha:]]|[Ww]ould[ \-]+otherwise)'
 
 if ! printf '%s\n' "$new_content" | grep -qE "$pattern"; then
   log_status "regex_no_match" "$(jq -nc --argjson len "${#new_content}" '{len: $len}')"
