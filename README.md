@@ -1,6 +1,6 @@
 # claude-code-hooks
 
-Claude Code hooks. Three Stop hooks block specific outputs from the assistant: effort estimates, hedges that don't name a concern, disagreement framed as a question. Two PreToolUse hooks block specific writes: project memory files, and content containing residue (justification, defense, decision narrative — the author going beyond describing what is).
+Claude Code hooks. Three Stop hooks block specific outputs from the assistant: effort estimates, hedges that don't name a concern, disagreement framed as a question. Three PreToolUse hooks block specific writes: project memory files, content containing residue (justification, defense, decision narrative — the author going beyond describing what is), and underived measurements (bare dimensional literals that should be docgen markers fed from a source constant).
 
 This is a personal tool, put on GitHub in case it helps someone running similar configurations. It is not a polished, configurable, cross-platform library — read the next section before assuming it'll work for you.
 
@@ -38,6 +38,8 @@ These run before specific tool calls.
 
 - **`block-residue.sh`** — catches `Write` / `Edit` / `MultiEdit` / `NotebookEdit` calls whose new content contains residue (justification, defense, decision narrative — the author going beyond describing what is). Two-stage like the Stop hooks: regex pre-filter on the new content, Haiku adjudication on a ±600-char window around the first match. The deny message points the assistant at three calibration files (`Principle.md`, `You.md`, `Framing.md`) in `~/Developer/homesodamachine/calibration/` and asks them to read those before looking at what they wrote. **Fires once per session, not twice** — once an agent has been pointed at the calibration, subsequent residue writes in the same session pass through. A marker file at `~/.claude/hooks/state/residue-warned-<session-id>` records the warning; markers older than 7 days are garbage-collected on each invocation. Skips binary/structured files (`.dxf`, `.json`, `.yaml`, etc.) and the calibration files themselves. Fires only when the calibration files exist at the expected path; bails silently otherwise.
 
+- **`block-underived-measurement.sh`** — catches `Write` / `Edit` / `MultiEdit` / `NotebookEdit` calls that introduce a bare dimensional literal (a value in mm, degrees, or a `⌀`/`ø` diameter) where the dimension is one this project fabricates and so should be a docgen marker fed from a source constant. Two-stage like `block-residue.sh`: a lenient regex pre-filter for measurement-shaped literals, then Haiku adjudication on a ±600-char window that splits a *derivable* project dimension (a wall, bore, boss, fillet, angle of the project's own geometry → nudge) from an *external* value that is correctly a literal (a fastener size, imperial equivalent, vendor spec, raw caliper measurement → pass). Scopes by extension — Markdown is judged whole, `.py`/`.scad` are reduced to their **comment text** so code constants like `boss_annulus = 3.0` don't fire — and strips existing `[value](TAG)` markers first so already-pinned values don't fire. The deny message points the assistant at the repo's `tools/docgen` and the `[value](TAG)` marker syntax. **Fires once per session, not twice**, via `~/.claude/hooks/state/measurement-warned-<session-id>` (same 7-day GC). Applies only inside a repo that carries `tools/docgen` (found by walking up from the target file); bails silently anywhere else.
+
 ## How the Stop hooks work
 
 Each Stop hook follows the same shape:
@@ -53,12 +55,13 @@ The two-stage design keeps API cost down (most turns never reach Haiku) while ke
 
 ## Logging
 
-The three Stop hooks and `block-residue.sh` each append one JSONL line per event to `~/.claude/hooks/logs/<hook-name>.jsonl` with a `status` field identifying which code path was taken:
+The three Stop hooks, `block-residue.sh`, and `block-underived-measurement.sh` each append one JSONL line per event to `~/.claude/hooks/logs/<hook-name>.jsonl` with a `status` field identifying which code path was taken:
 
 - `loop_guard` — re-entry from a revision attempt, skipped (Stop hooks only)
 - `no_transcript` / `no_assistant_message` / `empty_or_short_text` / `empty_after_strip` — nothing to check (Stop hooks)
 - `wrong_tool` / `skipped_calibration` / `skipped_non_prose` / `empty_or_short` / `no_calibration_files` — file or tool filtered out (`block-residue.sh` only)
-- `already_warned_this_session` — session marker exists from a prior block in the same session; hook passes through (`block-residue.sh` only)
+- `skipped_filetype` / `no_docgen_repo` / `empty_after_strip` — file filtered out: not `.md`/`.py`/`.scad`, not inside a `tools/docgen` repo, or no prose left after stripping comments and markers (`block-underived-measurement.sh` only)
+- `already_warned_this_session` — session marker exists from a prior nudge in the same session; hook passes through (`block-residue.sh` and `block-underived-measurement.sh`)
 - `regex_no_match` — pre-filter didn't match; **Stop-hook log lines include `last_400_chars` of the response so you can see what slipped through**
 - `no_api_key` — `~/.claude/anthropic_api_key` is missing
 - `haiku_no_response` — Haiku call made but empty response (timeout, network failure, etc.)
@@ -99,4 +102,5 @@ The `reason` message — what the assistant sees when blocked — is a `jq -n` l
 - `hooks/block-question-as-disagreement.sh` — question-as-disagreement hook (Stop, regex + Haiku two-stage)
 - `hooks/block-memory-write.sh` — memory-write hook (PreToolUse, path comparison only)
 - `hooks/block-residue.sh` — residue hook (PreToolUse, regex + Haiku two-stage)
-- `examples/settings.json` — example `~/.claude/settings.json` snippet wiring all five hooks
+- `hooks/block-underived-measurement.sh` — underived-measurement hook (PreToolUse, regex + Haiku two-stage)
+- `examples/settings.json` — example `~/.claude/settings.json` snippet wiring all six hooks
